@@ -15,29 +15,27 @@ from urlresolver import common
 import re
 import urllib
 import xbmcgui, xbmcvfs
-
 import json
+
 net = common.Net()
 AGENT = 'EXTDOWN_Kodi'
 VERSION = '1.1.1'
 USER_AGENT = '%s/%s' % (AGENT, VERSION)
 
-
 api_url = 'https://api.alldebrid.com'
 
-
-UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:61.0) Gecko/20100101 Firefox/61.0'
-headers = { 'User-Agent': UA }
+UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:69.0) Gecko/20100101 Firefox/69.0'
+headers = {'User-Agent': UA}
 
 SITE_IDENTIFIER = 'extreme_down'
-SITE_NAME = 'Extreme-Download (beta)'
+SITE_NAME = 'Extreme Down (bêta)'
 SITE_DESC = 'films en streaming, streaming hd, streaming 720p, Films/séries, récent'
 
-URL_MAIN = 'https://wvw.extreme-down.xyz/'
+URL_MAIN = 'https://www.extreme-down.xyz/'
 
-URL_SEARCH = (URL_MAIN+'/index.php?do=search', 'showMovies')
-URL_SEARCH_MOVIES = (URL_MAIN+'/index.php?do=search', 'showMovies')
-URL_SEARCH_SERIES = (URL_MAIN+'/index.php?do=search', 'showMovies')
+URL_SEARCH = (URL_MAIN + 'index.php?do=search', 'showMovies')
+URL_SEARCH_MOVIES = (URL_SEARCH[0], 'showMovies')
+URL_SEARCH_SERIES = (URL_SEARCH[0], 'showMovies')
 FUNCTION_SEARCH = 'showMovies'
 
 MOVIE_NEWS = (URL_MAIN, 'showMovies')
@@ -89,9 +87,7 @@ REPLAYTV_NEWS = (URL_MAIN + 'emissions-tv/', 'showMovies')
 def load():
     ADDON = addon()
     oGui = cGui()
-
     tokenVal = ADDON.getSetting('token_alldebrid')
-    dialog().VSinfo('Token Ajouter|%s|' % tokenVal, "Extreme-Download", 15)
 
     if tokenVal == "":
         oOutputParameterHandler = cOutputParameterHandler()
@@ -292,9 +288,6 @@ def getToken():
         return
     return __get_token(js_data.get('check_url').replace('\/', '/'))
 
-    
-    
-
 def __get_token(url):
     ADDON = addon()
     try:
@@ -320,7 +313,6 @@ def __check_auth(url):
     except Exception as e:
         VSlog('Exception during AD auth: %s' % e)
     return activated
-
 
 def showSearch():
     oGui = cGui()
@@ -409,7 +401,7 @@ def showMovies(sSearch = ''):
 
         if URL_SEARCH[0] in sSearch:
             bGlobal_Search = True
-            sSearch=sSearch.replace(URL_SEARCH[0], '')
+            sSearch = sSearch.replace(URL_SEARCH[0], '')
 
         if Nextpagesearch:
             query_args = (('do', 'search'), ('subaction', 'search'), ('search_start', Nextpagesearch), ('story', sSearch), ('titleonly', '3'))
@@ -445,9 +437,9 @@ def showMovies(sSearch = ''):
             if progress_.iscanceled():
                 break
 
-            sTitle = aEntry[2]
             sUrl2 = aEntry[0]
             sThumb = aEntry[1]
+            sTitle = aEntry[2]
             sDesc = ''
 
             if sSearch and total > 2:
@@ -475,14 +467,14 @@ def showMovies(sSearch = ''):
                 oOutputParameterHandler = cOutputParameterHandler()
                 oOutputParameterHandler.addParameter('siteUrl', sSearch)
                 oOutputParameterHandler.addParameter('Nextpagesearch', aResult[1][0])
-                oGui.addNext(SITE_IDENTIFIER, 'showMovies', '[COLOR teal]Next >>>[/COLOR]', oOutputParameterHandler)
+                oGui.addNext(SITE_IDENTIFIER, 'showMovies', '[COLOR teal]Suivant >>>[/COLOR]', oOutputParameterHandler)
 
         else:
             sNextPage = __checkForNextPage(sHtmlContent)
             if (sNextPage != False):
                 oOutputParameterHandler = cOutputParameterHandler()
                 oOutputParameterHandler.addParameter('siteUrl', sNextPage)
-                oGui.addNext(SITE_IDENTIFIER, 'showMovies', '[COLOR teal]Next >>>[/COLOR]', oOutputParameterHandler)
+                oGui.addNext(SITE_IDENTIFIER, 'showMovies', '[COLOR teal]Suivant >>>[/COLOR]', oOutputParameterHandler)
 
     if Nextpagesearch:
         oGui.setEndOfDirectory()
@@ -669,6 +661,7 @@ def RecapchaBypass():#Ouverture de Chrome Launcher s'il est intallez
     else:
         sUrl_Bypass = "https://api.alldebrid.com/link/redirector?agent=EXTDOWN_Kodi&token=" + Token_Alldebrid + "&link=" + sUrl
 
+
     oRequestHandler = cRequestHandler(sUrl_Bypass)
     sHtmlContent = oRequestHandler.request()
 
@@ -710,7 +703,7 @@ def getHoster():#Ouvrir le clavier + requete
     sThumb = oInputParameterHandler.getValue('sThumb')
 
     sThumb = ''
-    sSearchText = oGui.showKeyBoard(heading = "Mettre ici le lien du hoster après avoir passer les Recaptcha manuellement") #appelle le clavier xbmc
+    sSearchText = oGui.showKeyBoard(heading = "Mettre ici le lien du hoster après avoir passer les Recaptcha manuellement")#appelle le clavier xbmc
     if (sSearchText != False):
         sUrl = sSearchText
 
