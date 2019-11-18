@@ -9,10 +9,20 @@ from resources.lib.handler.requestHandler import cRequestHandler
 from resources.lib.parser import cParser
 from resources.lib.util import cUtil
 from resources.lib.comaddon import progress, VSlog, xbmc, dialog, addon
+from urllib import quote_plus
+from urlresolver import common
 
 import re
 import urllib
 import xbmcgui, xbmcvfs
+import json
+
+net = common.Net()
+AGENT = 'EXTDOWN_Kodi'
+VERSION = '1.1.1'
+USER_AGENT = '%s/%s' % (AGENT, VERSION)
+
+api_url = 'https://api.alldebrid.com'
 
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:69.0) Gecko/20100101 Firefox/69.0'
 headers = {'User-Agent': UA}
@@ -23,7 +33,7 @@ SITE_DESC = 'films en streaming, streaming hd, streaming 720p, Films/séries, r�
 
 URL_MAIN = 'https://www.extreme-down.xyz/'
 
-URL_SEARCH = (URL_MAIN + 'home.html', 'showMovies')
+URL_SEARCH = (URL_MAIN + 'index.php?do=search', 'showMovies')
 URL_SEARCH_MOVIES = (URL_SEARCH[0], 'showMovies')
 URL_SEARCH_SERIES = (URL_SEARCH[0], 'showMovies')
 FUNCTION_SEARCH = 'showMovies'
@@ -77,11 +87,16 @@ REPLAYTV_NEWS = (URL_MAIN + 'emissions-tv/', 'showMovies')
 def load():
     ADDON = addon()
     oGui = cGui()
+    tokenVal = ADDON.getSetting('token_alldebrid')
 
-    if ADDON.getSetting('token_alldebrid') == "":
+    if tokenVal == "":
         oOutputParameterHandler = cOutputParameterHandler()
         oOutputParameterHandler.addParameter('siteUrl', 'http://venom/')
         oGui.addDir(SITE_IDENTIFIER, 'getToken', '[COLOR red]Les utilisateurs d\'Alldebrid cliquez ici. Pour les autres ceci n\'est pas nécéssaire \ncar l\'ancienne méthode est toujours fonctionnelle.[/COLOR]', 'films.png', oOutputParameterHandler)
+    else:
+        oOutputParameterHandler = cOutputParameterHandler()
+        oOutputParameterHandler.addParameter('siteUrl', 'http://venom/')
+        oGui.addDir(SITE_IDENTIFIER, 'getToken', '[COLOR green]Reauthoriser Alldebrid. Pour les autres ceci n\'est pas nécéssaire \ncar l\'ancienne méthode est toujours fonctionnelle.[/COLOR]', 'films.png', oOutputParameterHandler)
 
     oOutputParameterHandler = cOutputParameterHandler()
     oOutputParameterHandler.addParameter('siteUrl', 'http://venom/')
@@ -258,22 +273,46 @@ def showMenuAutre():
     oGui.setEndOfDirectory()
 
 def getToken():
+
+    url = '%s/pin/get?agent=%s&version=%s' % (api_url, quote_plus(AGENT), quote_plus(VERSION))
+    js_result = net.http_GET(url, headers=headers).content
+    js_data = json.loads(js_result)
+    line1 = 'Go to URL: %s' % (js_data.get('base_url').replace('\/', '/'))
+    line2 = 'When prompted enter: %s' % (js_data.get('pin'))
+    with common.kodi.CountdownDialog('Url Resolver All Debrid Authorization', line1, line2,
+                                     countdown=js_data.get('expired_in', 120)) as cd:
+        result = cd.start(__check_auth, [js_data.get('check_url').replace('\/', '/')])
+
+    # cancelled
+    if result is None:
+        return
+    return __get_token(js_data.get('check_url').replace('\/', '/'))
+
+def __get_token(url):
     ADDON = addon()
-    oGui = cGui()
+    try:
+        js_result = net.http_GET(url, headers=headers).content
+        js_data = json.loads(js_result)
+        if js_data.get("success", False):
+            token = js_data.get('token', '')
+            VSlog('Authorizing All Debrid Result: |%s|' % token)
+            ADDON.setSetting('token_alldebrid', token)
+            dialog().VSinfo('Token Ajouter|%s|' % token, "Extreme-Download", 15)
+            return ADDON.getSetting('token_alldebrid')
+    except Exception as e:
+        VSlog('All Debrid Authorization Failed: %s' % e)
+        return False
 
-    username = oGui.showKeyBoard(heading = "Entrez votre nom d'utilisateur")
-    password = oGui.showKeyBoard(heading = "Entrez votre mot de passe")
-    oRequestHandler = cRequestHandler('https://api.alldebrid.com/user/login?agent=mySoft&username=' + username + '&password=' + password)
-    sHtmlContent = oRequestHandler.request()
-
-    sPattern = '"token":"([^"]+)"'
-
-    oParser = cParser()
-    aResult = oParser.parse(sHtmlContent, sPattern)
-    VSlog(aResult)
-    ADDON.setSetting('token_alldebrid', ''.join(aResult[1]))
-    dialog().VSinfo('Token Ajouter', "Extreme-Download", 15)
-    oGui.setEndOfDirectory()
+def __check_auth(url):
+    activated = False
+    try:
+        js_result = net.http_GET(url, headers=headers).content
+        js_data = json.loads(js_result)
+        if js_data.get("success", False):
+            activated = js_data.get('activated', False)
+    except Exception as e:
+        VSlog('Exception during AD auth: %s' % e)
+    return activated
 
 def showSearch():
     oGui = cGui()
@@ -620,7 +659,8 @@ def RecapchaBypass():#Ouverture de Chrome Launcher s'il est intallez
     if Token_Alldebrid == "":
         RecapchaBypassOld(sUrl)
     else:
-        sUrl_Bypass = "https://api.alldebrid.com/link/redirector?agent=mySoft&token=" + Token_Alldebrid + "&link=" + sUrl
+        sUrl_Bypass = "https://api.alldebrid.com/link/redirector?agent=EXTDOWN_Kodi&token=" + Token_Alldebrid + "&link=" + sUrl
+
 
     oRequestHandler = cRequestHandler(sUrl_Bypass)
     sHtmlContent = oRequestHandler.request()
